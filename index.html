@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pixelorama 像素化转换工具</title>
+<style>
+  :root{
+    --bg:#15131c;
+    --panel:#211d2d;
+    --panel2:#2c2639;
+    --line:#4b3f63;
+    --text:#efeaf7;
+    --muted:#b7aacb;
+    --accent:#9f7aea;
+    --accent2:#64d2ff;
+    --danger:#ff6b6b;
+    --ok:#51d88a;
+    --shadow:rgba(0,0,0,.35);
+    --checker1:#8b8791;
+    --checker2:#c7c2cc;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Noto Sans SC", monospace;
+    color:var(--text);
+    background:
+      radial-gradient(circle at 20% 0%, rgba(159,122,234,.15), transparent 34%),
+      radial-gradient(circle at 88% 12%, rgba(100,210,255,.12), transparent 30%),
+      linear-gradient(180deg,#11101a,#171421 55%,#0f0e15);
+    image-rendering: pixelated;
+  }
+  header{
+    padding:18px 20px 12px;
+    border-bottom:4px solid #0c0b10;
+    background:linear-gradient(180deg,rgba(33,29,45,.96),rgba(24,21,34,.96));
+    box-shadow:0 8px 0 rgba(0,0,0,.18);
+    position:sticky; top:0; z-index:10;
+  }
+  h1{font-size:20px; margin:0 0 6px; letter-spacing:.5px}
+  .sub{font-size:12px; color:var(--muted)}
+  .app{
+    display:grid;
+    grid-template-columns: 360px 1fr;
+    gap:14px;
+    padding:14px;
+    max-width:1500px;
+    margin:0 auto;
+  }
+  .panel{
+    background:var(--panel);
+    border:3px solid var(--line);
+    box-shadow:6px 6px 0 var(--shadow);
+  }
+  .controls{
+    padding:12px;
+    height:calc(100vh - 100px);
+    overflow:auto;
+    position:sticky; top:86px;
+  }
+  .section{
+    border:2px solid rgba(255,255,255,.08);
+    background:var(--panel2);
+    padding:10px;
+    margin-bottom:12px;
+  }
+  .section h2{
+    font-size:13px; margin:0 0 10px;
+    color:#fff;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .row{display:grid; grid-template-columns: 1fr 92px; gap:8px; align-items:center; margin:8px 0}
+  .row2{display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin:8px 0}
+  label{font-size:12px; color:var(--muted)}
+  input,select,button{
+    font:inherit;
+    color:var(--text);
+    background:#171421;
+    border:2px solid var(--line);
+    padding:8px;
+    outline:none;
+  }
+  input[type="range"]{padding:0; width:100%}
+  input[type="checkbox"]{width:18px;height:18px}
+  button{
+    cursor:pointer;
+    background:#2b2440;
+    box-shadow:3px 3px 0 rgba(0,0,0,.35);
+  }
+  button:hover{border-color:var(--accent); transform:translate(-1px,-1px); box-shadow:4px 4px 0 rgba(0,0,0,.35)}
+  button:active{transform:translate(2px,2px); box-shadow:1px 1px 0 rgba(0,0,0,.35)}
+  button.primary{background:linear-gradient(180deg,#7652d6,#5b3fb2); border-color:#b79cff}
+  button.good{background:#174a32; border-color:#51d88a}
+  button.warn{background:#4b2d18; border-color:#ffc069}
+  button.danger{background:#4b1b23; border-color:#ff6b6b}
+  .drop{
+    border:3px dashed var(--accent);
+    background:rgba(159,122,234,.08);
+    padding:18px 10px;
+    text-align:center;
+    min-height:92px;
+    display:flex; align-items:center; justify-content:center;
+    color:#d9ccff;
+  }
+  .drop.drag{background:rgba(100,210,255,.13); border-color:var(--accent2)}
+  .tiny{font-size:11px; color:var(--muted); line-height:1.5}
+  .value{
+    font-size:11px;
+    text-align:right;
+    color:#fff;
+    background:#11101a;
+    border:1px solid rgba(255,255,255,.08);
+    padding:4px 6px;
+  }
+  .workspace{
+    min-height:calc(100vh - 120px);
+    padding:12px;
+  }
+  .toolbar{
+    display:flex; flex-wrap:wrap; gap:8px;
+    margin-bottom:12px;
+    align-items:center;
+  }
+  .previewGrid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+  }
+  .previewBox{
+    background:#11101a;
+    border:3px solid var(--line);
+    min-height:360px;
+    position:relative;
+    overflow:auto;
+  }
+  .previewBox h3{
+    margin:0;
+    padding:8px 10px;
+    font-size:12px;
+    background:#211d2d;
+    border-bottom:2px solid var(--line);
+    position:sticky; top:0; z-index:2;
+  }
+  .canvasWrap{
+    padding:18px;
+    min-height:310px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background-color:#c7c2cc;
+    background-image:
+      linear-gradient(45deg, var(--checker1) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--checker1) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--checker1) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--checker1) 75%);
+    background-size:24px 24px;
+    background-position:0 0,0 12px,12px -12px,-12px 0;
+  }
+  canvas{
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background:transparent;
+    border:1px solid rgba(0,0,0,.18);
+  }
+  .stats{
+    margin-top:12px;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(120px,1fr));
+    gap:8px;
+  }
+  .stat{
+    background:#171421;
+    border:2px solid var(--line);
+    padding:9px;
+    font-size:12px;
+  }
+  .stat b{display:block; color:#fff; margin-bottom:4px}
+  .swatches{
+    display:flex; flex-wrap:wrap; gap:4px;
+    padding:8px;
+    background:#11101a;
+    border:2px solid var(--line);
+    min-height:44px;
+  }
+  .swatch{
+    width:22px;height:22px;
+    border:1px solid rgba(255,255,255,.4);
+  }
+  .hint{
+    margin-top:10px;
+    padding:10px;
+    border-left:4px solid var(--accent2);
+    background:rgba(100,210,255,.08);
+    color:#d7f5ff;
+    font-size:12px;
+    line-height:1.55;
+  }
+  .hidden{display:none!important}
+  @media (max-width: 980px){
+    .app{grid-template-columns:1fr}
+    .controls{position:static;height:auto}
+    .previewGrid{grid-template-columns:1fr}
+    header{position:static}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pixelorama 像素化转换工具</h1>
+  <div class="sub">导入图片 → 去背景 → 缩放/像素化 → 调色板压缩 → 导出透明 PNG，再导入 Pixelorama 编辑。</div>
+</header>
+
+<main class="app">
+  <aside class="panel controls">
+    <div class="section">
+      <h2>1. 导入图片</h2>
+      <div id="drop" class="drop">
+        <div>
+          <div>拖入图片到这里</div>
+          <div class="tiny">或点击下方按钮选择 PNG / JPG / WEBP</div>
+        </div>
+      </div>
+      <input id="file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="width:100%;margin-top:8px" />
+      <div class="hint">
+        建议导入角色单张图或一帧图。工具导出的 PNG 可以在 Pixelorama 里直接打开或导入。
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>2. 背景处理</h2>
+      <label>去背景模式</label>
+      <select id="bgMode" style="width:100%;margin-top:5px">
+        <option value="none">不去背景</option>
+        <option value="corner">取左上角颜色作为背景</option>
+        <option value="white">去白色/浅色背景</option>
+        <option value="black">去黑色/深色背景</option>
+        <option value="manual">手动取色：点击原图</option>
+      </select>
+
+      <div class="row">
+        <label>容差 tolerance</label>
+        <span id="tolVal" class="value">38</span>
+      </div>
+      <input id="tolerance" type="range" min="0" max="160" value="38" />
+
+      <div class="row">
+        <label>边缘羽化</label>
+        <span id="featherVal" class="value">10</span>
+      </div>
+      <input id="feather" type="range" min="0" max="80" value="10" />
+
+      <div class="row">
+        <label>Alpha 截断</label>
+        <span id="alphaVal" class="value">12</span>
+      </div>
+      <input id="alphaCut" type="range" min="0" max="255" value="12" />
+
+      <div class="row2">
+        <button id="trimBtn" class="warn">裁掉透明空白</button>
+        <button id="clearBgBtn">清除取色</button>
+      </div>
+      <div class="tiny">手动取色：选择“手动取色”后，在左侧原图预览里点背景颜色。</div>
+    </div>
+
+    <div class="section">
+      <h2>3. 像素尺寸</h2>
+      <div class="row2">
+        <div>
+          <label>像素宽</label>
+          <input id="targetW" type="number" min="1" max="512" value="64" style="width:100%" />
+        </div>
+        <div>
+          <label>像素高</label>
+          <input id="targetH" type="number" min="1" max="512" value="64" style="width:100%" />
+        </div>
+      </div>
+      <div class="row2">
+        <button id="fit32">最长边 32</button>
+        <button id="fit64">最长边 64</button>
+      </div>
+      <div class="row2">
+        <button id="fit96">最长边 96</button>
+        <button id="fit128">最长边 128</button>
+      </div>
+      <div class="row">
+        <label>保持比例</label>
+        <input id="lockAspect" type="checkbox" checked />
+      </div>
+      <div class="row">
+        <label>导出/预览放大倍数</label>
+        <span id="zoomVal" class="value">6x</span>
+      </div>
+      <input id="zoom" type="range" min="1" max="24" value="6" />
+      <div class="row">
+        <label>缩放采样</label>
+        <select id="sampling">
+          <option value="smooth">平滑缩小，更像自动像素化</option>
+          <option value="nearest">最近邻，保留硬边</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>4. 颜色与像素感</h2>
+      <div class="row">
+        <label>调色板颜色数</label>
+        <span id="paletteVal" class="value">24</span>
+      </div>
+      <input id="paletteSize" type="range" min="2" max="64" value="24" />
+
+      <div class="row">
+        <label>抖动 dithering</label>
+        <select id="dither">
+          <option value="none">无</option>
+          <option value="ordered">有序 Bayer 4x4</option>
+          <option value="floyd">Floyd-Steinberg</option>
+        </select>
+      </div>
+
+      <div class="row"><label>亮度</label><span id="brightVal" class="value">0</span></div>
+      <input id="brightness" type="range" min="-100" max="100" value="0" />
+
+      <div class="row"><label>对比度</label><span id="contrastVal" class="value">0</span></div>
+      <input id="contrast" type="range" min="-100" max="100" value="0" />
+
+      <div class="row"><label>饱和度</label><span id="satVal" class="value">0</span></div>
+      <input id="saturation" type="range" min="-100" max="100" value="0" />
+
+      <div class="row">
+        <label>生成 1px 描边</label>
+        <input id="outline" type="checkbox" />
+      </div>
+      <div class="row">
+        <label>显示网格</label>
+        <input id="grid" type="checkbox" checked />
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>5. 导出</h2>
+      <div class="row2">
+        <button id="downloadPixel" class="primary">下载像素 PNG</button>
+        <button id="downloadBig" class="primary">下载放大 PNG</button>
+      </div>
+      <div class="row2">
+        <button id="downloadPalette" class="good">导出调色板</button>
+        <button id="resetBtn" class="danger">重置参数</button>
+      </div>
+      <div class="tiny">
+        “像素 PNG”是低分辨率原始像素图；“放大 PNG”使用最近邻放大，方便预览或直接当素材看。
+      </div>
+    </div>
+  </aside>
+
+  <section class="panel workspace">
+    <div class="toolbar">
+      <button id="processBtn" class="primary">重新生成</button>
+      <button id="copyInfo">复制导入建议</button>
+      <span class="tiny">大部分参数会自动实时刷新；图片较大时可点“重新生成”。</span>
+    </div>
+
+    <div class="previewGrid">
+      <div class="previewBox">
+        <h3>原图 / 取色区域</h3>
+        <div class="canvasWrap">
+          <canvas id="originalCanvas" width="320" height="240"></canvas>
+        </div>
+      </div>
+      <div class="previewBox">
+        <h3>像素化结果</h3>
+        <div class="canvasWrap">
+          <canvas id="previewCanvas" width="384" height="384"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>原图尺寸</b><span id="srcStat">未导入</span></div>
+      <div class="stat"><b>像素尺寸</b><span id="pixStat">64 × 64</span></div>
+      <div class="stat"><b>放大导出</b><span id="bigStat">384 × 384</span></div>
+      <div class="stat"><b>颜色数量</b><span id="colorStat">-</span></div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="tiny" style="margin-bottom:6px">当前调色板预览</div>
+      <div id="swatches" class="swatches"></div>
+    </div>
+
+    <div class="hint">
+      Pixelorama 用法：下载“像素 PNG”后，在 Pixelorama 里 <b>File → Open</b> 打开；如果要继续逐帧动画，可以把每一帧都用同样尺寸导出，再在 Pixelorama 中按帧导入。
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const file = $("file"), drop = $("drop");
+  const originalCanvas = $("originalCanvas");
+  const previewCanvas = $("previewCanvas");
+  const octx = originalCanvas.getContext("2d", { willReadFrequently:true });
+  const pctx = previewCanvas.getContext("2d", { willReadFrequently:true });
+
+  const state = {
+    img:null,
+    imgName:"pixelorama_pixel",
+    sourceCanvas:document.createElement("canvas"),
+    workCanvas:document.createElement("canvas"),
+    pixelCanvas:document.createElement("canvas"),
+    enlargedCanvas:document.createElement("canvas"),
+    bgColor:null,
+    aspect:1,
+    lastPalette:[]
+  };
+
+  const ids = [
+    "bgMode","tolerance","feather","alphaCut","targetW","targetH","lockAspect","zoom","sampling",
+    "paletteSize","dither","brightness","contrast","saturation","outline","grid"
+  ];
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+  function dist(r,g,b,c){ const dr=r-c[0], dg=g-c[1], db=b-c[2]; return Math.sqrt(dr*dr+dg*dg+db*db); }
+  function hex(r,g,b){ return "#" + [r,g,b].map(v => v.toString(16).padStart(2,"0")).join(""); }
+
+  function updateLabels(){
+    $("tolVal").textContent = $("tolerance").value;
+    $("featherVal").textContent = $("feather").value;
+    $("alphaVal").textContent = $("alphaCut").value;
+    $("zoomVal").textContent = $("zoom").value + "x";
+    $("paletteVal").textContent = $("paletteSize").value;
+    $("brightVal").textContent = $("brightness").value;
+    $("contrastVal").textContent = $("contrast").value;
+    $("satVal").textContent = $("saturation").value;
+  }
+
+  function scheduleProcess(){
+    updateLabels();
+    clearTimeout(window.__pxTimer);
+    window.__pxTimer = setTimeout(process, 90);
+  }
+
+  ids.forEach(id => $(id).addEventListener("input", e => {
+    if(id === "targetW" && $("lockAspect").checked && state.aspect){
+      $("targetH").value = Math.max(1, Math.round(Number($("targetW").value) / state.aspect));
+    }
+    if(id === "targetH" && $("lockAspect").checked && state.aspect){
+      $("targetW").value = Math.max(1, Math.round(Number($("targetH").value) * state.aspect));
+    }
+    scheduleProcess();
+  }));
+
+  $("processBtn").addEventListener("click", process);
+  $("resetBtn").addEventListener("click", () => {
+    $("bgMode").value="none"; $("tolerance").value=38; $("feather").value=10; $("alphaCut").value=12;
+    $("targetW").value=64; $("targetH").value=64; $("lockAspect").checked=true; $("zoom").value=6; $("sampling").value="smooth";
+    $("paletteSize").value=24; $("dither").value="none"; $("brightness").value=0; $("contrast").value=0; $("saturation").value=0;
+    $("outline").checked=false; $("grid").checked=true; state.bgColor=null;
+    process();
+  });
+
+  ["fit32","fit64","fit96","fit128"].forEach(id => {
+    $(id).addEventListener("click", () => {
+      const n = Number(id.replace("fit",""));
+      if(!state.img){ $("targetW").value=n; $("targetH").value=n; scheduleProcess(); return; }
+      const w = state.img.naturalWidth, h = state.img.naturalHeight;
+      if(w >= h){ $("targetW").value=n; $("targetH").value=Math.max(1, Math.round(n*h/w)); }
+      else { $("targetH").value=n; $("targetW").value=Math.max(1, Math.round(n*w/h)); }
+      scheduleProcess();
+    });
+  });
+
+  $("trimBtn").addEventListener("click", () => {
+    if(!state.img) return;
+    const tmp = applyPreprocessToOriginal();
+    const ctx = tmp.getContext("2d", {willReadFrequently:true});
+    const d = ctx.getImageData(0,0,tmp.width,tmp.height);
+    let minX=tmp.width, minY=tmp.height, maxX=-1, maxY=-1;
+    for(let y=0;y<tmp.height;y++){
+      for(let x=0;x<tmp.width;x++){
+        const a = d.data[(y*tmp.width+x)*4+3];
+        if(a > 10){ minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); }
+      }
+    }
+    if(maxX < 0) return;
+    const tw = maxX-minX+1, th = maxY-minY+1;
+    const crop = document.createElement("canvas"); crop.width=tw; crop.height=th;
+    crop.getContext("2d").drawImage(tmp, minX, minY, tw, th, 0, 0, tw, th);
+    const img = new Image();
+    img.onload = () => {
+      state.img = img;
+      state.sourceCanvas.width=tw; state.sourceCanvas.height=th;
+      state.sourceCanvas.getContext("2d").drawImage(img,0,0);
+      state.aspect = tw/th;
+      drawOriginal();
+      process();
+    };
+    img.src = crop.toDataURL("image/png");
+  });
+
+  $("clearBgBtn").addEventListener("click", () => { state.bgColor=null; scheduleProcess(); });
+
+  function loadImageFromFile(f){
+    if(!f) return;
+    state.imgName = (f.name || "pixelorama_pixel").replace(/\.[^.]+$/,"");
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        state.img = img;
+        state.sourceCanvas.width = img.naturalWidth;
+        state.sourceCanvas.height = img.naturalHeight;
+        state.sourceCanvas.getContext("2d").clearRect(0,0,img.naturalWidth,img.naturalHeight);
+        state.sourceCanvas.getContext("2d").drawImage(img,0,0);
+        state.aspect = img.naturalWidth / img.naturalHeight;
+        fitOriginalCanvas();
+        drawOriginal();
+        if($("lockAspect").checked){
+          const maxSide = 64;
+          if(img.naturalWidth >= img.naturalHeight){
+            $("targetW").value = maxSide;
+            $("targetH").value = Math.max(1, Math.round(maxSide*img.naturalHeight/img.naturalWidth));
+          }else{
+            $("targetH").value = maxSide;
+            $("targetW").value = Math.max(1, Math.round(maxSide*img.naturalWidth/img.naturalHeight));
+          }
+        }
+        process();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(f);
+  }
+
+  file.addEventListener("change", e => loadImageFromFile(e.target.files[0]));
+
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add("drag");
+  }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove("drag");
+  }));
+  drop.addEventListener("drop", e => loadImageFromFile(e.dataTransfer.files[0]));
+  drop.addEventListener("click", () => file.click());
+
+  function fitOriginalCanvas(){
+    if(!state.img) return;
+    const max = 420;
+    const w = state.img.naturalWidth, h = state.img.naturalHeight;
+    const s = Math.min(1, max / Math.max(w,h));
+    originalCanvas.width = Math.max(1, Math.round(w*s));
+    originalCanvas.height = Math.max(1, Math.round(h*s));
+  }
+
+  function drawOriginal(){
+    octx.clearRect(0,0,originalCanvas.width,originalCanvas.height);
+    if(!state.img){
+      octx.fillStyle="#211d2d"; octx.fillRect(0,0,originalCanvas.width,originalCanvas.height);
+      octx.fillStyle="#b7aacb"; octx.fillText("No image", 20, 30);
+      return;
+    }
+    octx.imageSmoothingEnabled = true;
+    octx.drawImage(state.img,0,0,originalCanvas.width,originalCanvas.height);
+    if(state.bgColor){
+      octx.fillStyle = hex(...state.bgColor);
+      octx.fillRect(8,8,28,28);
+      octx.strokeStyle="#fff"; octx.strokeRect(8,8,28,28);
+    }
+  }
+
+  originalCanvas.addEventListener("click", e => {
+    if(!state.img || $("bgMode").value !== "manual") return;
+    const rect = originalCanvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) * state.sourceCanvas.width / rect.width);
+    const y = Math.floor((e.clientY - rect.top) * state.sourceCanvas.height / rect.height);
+    const d = state.sourceCanvas.getContext("2d", {willReadFrequently:true}).getImageData(x,y,1,1).data;
+    state.bgColor = [d[0],d[1],d[2]];
+    drawOriginal();
+    process();
+  });
+
+  function applyPreprocessToOriginal(){
+    const src = state.sourceCanvas;
+    const canvas = document.createElement("canvas");
+    canvas.width = src.width; canvas.height = src.height;
+    const ctx = canvas.getContext("2d", {willReadFrequently:true});
+    ctx.drawImage(src,0,0);
+    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const data = imgData.data;
+
+    const brightness = Number($("brightness").value);
+    const contrast = Number($("contrast").value);
+    const saturation = Number($("saturation").value);
+    const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+    const satFactor = 1 + saturation / 100;
+
+    let bg = null;
+    const mode = $("bgMode").value;
+    if(mode === "corner"){
+      const d = state.sourceCanvas.getContext("2d", {willReadFrequently:true}).getImageData(0,0,1,1).data;
+      bg = [d[0],d[1],d[2]];
+    }else if(mode === "white"){
+      bg = [255,255,255];
+    }else if(mode === "black"){
+      bg = [0,0,0];
+    }else if(mode === "manual" && state.bgColor){
+      bg = state.bgColor;
+    }
+
+    const tol = Number($("tolerance").value);
+    const feather = Number($("feather").value);
+    const alphaCut = Number($("alphaCut").value);
+
+    for(let i=0;i<data.length;i+=4){
+      let r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+
+      if(bg){
+        const dd = dist(r,g,b,bg);
+        if(dd <= tol) a = 0;
+        else if(feather > 0 && dd <= tol + feather){
+          a = Math.round(a * ((dd - tol) / feather));
+        }
+      }
+
+      r = cFactor * (r - 128) + 128 + brightness;
+      g = cFactor * (g - 128) + 128 + brightness;
+      b = cFactor * (b - 128) + 128 + brightness;
+
+      const gray = 0.299*r + 0.587*g + 0.114*b;
+      r = gray + (r-gray)*satFactor;
+      g = gray + (g-gray)*satFactor;
+      b = gray + (b-gray)*satFactor;
+
+      data[i]=clamp(Math.round(r),0,255);
+      data[i+1]=clamp(Math.round(g),0,255);
+      data[i+2]=clamp(Math.round(b),0,255);
+      data[i+3]=a < alphaCut ? 0 : a;
+    }
+
+    ctx.putImageData(imgData,0,0);
+    return canvas;
+  }
+
+  function buildPalette(data, k){
+    const buckets = new Map();
+    for(let i=0;i<data.length;i+=4){
+      if(data[i+3] < 20) continue;
+      const r = data[i]>>3, g = data[i+1]>>3, b = data[i+2]>>3;
+      const key = (r<<10) | (g<<5) | b;
+      const item = buckets.get(key) || {count:0, r:0, g:0, b:0};
+      item.count++; item.r += data[i]; item.g += data[i+1]; item.b += data[i+2];
+      buckets.set(key,item);
+    }
+    let colors = [...buckets.values()]
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,k)
+      .map(v => [Math.round(v.r/v.count), Math.round(v.g/v.count), Math.round(v.b/v.count)]);
+    if(colors.length === 0) colors = [[0,0,0]];
+    return colors;
+  }
+
+  function nearestColor(r,g,b,palette){
+    let best = palette[0], bestD = Infinity;
+    for(const c of palette){
+      const d = (r-c[0])**2 + (g-c[1])**2 + (b-c[2])**2;
+      if(d < bestD){ bestD=d; best=c; }
+    }
+    return best;
+  }
+
+  function quantize(imgData, palette){
+    const data = imgData.data;
+    const mode = $("dither").value;
+
+    if(mode === "none"){
+      for(let i=0;i<data.length;i+=4){
+        if(data[i+3] < 20) continue;
+        const c = nearestColor(data[i],data[i+1],data[i+2],palette);
+        data[i]=c[0]; data[i+1]=c[1]; data[i+2]=c[2];
+      }
+      return;
+    }
+
+    if(mode === "ordered"){
+      const bayer = [
+        [0, 8, 2,10],
+        [12,4,14, 6],
+        [3,11,1, 9],
+        [15,7,13,5]
+      ];
+      const w = imgData.width;
+      for(let i=0;i<data.length;i+=4){
+        if(data[i+3] < 20) continue;
+        const p = i/4, x=p%w, y=Math.floor(p/w);
+        const t = (bayer[y%4][x%4] - 7.5) * 5;
+        const c = nearestColor(clamp(data[i]+t,0,255),clamp(data[i+1]+t,0,255),clamp(data[i+2]+t,0,255),palette);
+        data[i]=c[0]; data[i+1]=c[1]; data[i+2]=c[2];
+      }
+      return;
+    }
+
+    if(mode === "floyd"){
+      const w = imgData.width, h = imgData.height;
+      const buf = new Float32Array(data.length);
+      for(let i=0;i<data.length;i++) buf[i]=data[i];
+
+      const addErr = (x,y,er,eg,eb,f) => {
+        if(x<0||x>=w||y<0||y>=h) return;
+        const j=(y*w+x)*4;
+        if(buf[j+3] < 20) return;
+        buf[j]+=er*f; buf[j+1]+=eg*f; buf[j+2]+=eb*f;
+      };
+
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          const i=(y*w+x)*4;
+          if(buf[i+3] < 20) continue;
+          const old=[clamp(buf[i],0,255),clamp(buf[i+1],0,255),clamp(buf[i+2],0,255)];
+          const c = nearestColor(old[0],old[1],old[2],palette);
+          const er=old[0]-c[0], eg=old[1]-c[1], eb=old[2]-c[2];
+          buf[i]=c[0]; buf[i+1]=c[1]; buf[i+2]=c[2];
+          addErr(x+1,y,er,eg,eb,7/16);
+          addErr(x-1,y+1,er,eg,eb,3/16);
+          addErr(x,y+1,er,eg,eb,5/16);
+          addErr(x+1,y+1,er,eg,eb,1/16);
+        }
+      }
+      for(let i=0;i<data.length;i+=4){
+        data[i]=clamp(Math.round(buf[i]),0,255);
+        data[i+1]=clamp(Math.round(buf[i+1]),0,255);
+        data[i+2]=clamp(Math.round(buf[i+2]),0,255);
+      }
+    }
+  }
+
+  function addOutline(canvas){
+    const ctx = canvas.getContext("2d", {willReadFrequently:true});
+    const w=canvas.width, h=canvas.height;
+    const img = ctx.getImageData(0,0,w,h);
+    const src = new Uint8ClampedArray(img.data);
+    const out = img.data;
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const i=(y*w+x)*4;
+        if(src[i+3] > 20) continue;
+        let neighbor=false;
+        for(let yy=-1; yy<=1; yy++){
+          for(let xx=-1; xx<=1; xx++){
+            if(Math.abs(xx)+Math.abs(yy)!==1) continue;
+            const nx=x+xx, ny=y+yy;
+            if(nx<0||nx>=w||ny<0||ny>=h) continue;
+            if(src[(ny*w+nx)*4+3] > 20) neighbor=true;
+          }
+        }
+        if(neighbor){ out[i]=20; out[i+1]=18; out[i+2]=28; out[i+3]=255; }
+      }
+    }
+    ctx.putImageData(img,0,0);
+  }
+
+  function drawGrid(ctx,w,h,z){
+    if(!$("grid").checked || z < 3) return;
+    ctx.save();
+    ctx.strokeStyle = "rgba(0,0,0,.28)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let x=0;x<=w;x++){ ctx.moveTo(x*z+0.5,0); ctx.lineTo(x*z+0.5,h*z); }
+    for(let y=0;y<=h;y++){ ctx.moveTo(0,y*z+0.5); ctx.lineTo(w*z,y*z+0.5); }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function process(){
+    updateLabels();
+    if(!state.img){
+      drawOriginal();
+      $("pixStat").textContent = `${$("targetW").value} × ${$("targetH").value}`;
+      $("bigStat").textContent = `${Number($("targetW").value)*Number($("zoom").value)} × ${Number($("targetH").value)*Number($("zoom").value)}`;
+      return;
+    }
+
+    drawOriginal();
+    const pre = applyPreprocessToOriginal();
+
+    const tw = clamp(parseInt($("targetW").value || 64,10),1,512);
+    const th = clamp(parseInt($("targetH").value || 64,10),1,512);
+    const pixel = state.pixelCanvas;
+    pixel.width = tw; pixel.height = th;
+    const px = pixel.getContext("2d", {willReadFrequently:true});
+    px.clearRect(0,0,tw,th);
+    px.imageSmoothingEnabled = $("sampling").value === "smooth";
+    px.drawImage(pre,0,0,tw,th);
+
+    let imgData = px.getImageData(0,0,tw,th);
+    const palette = buildPalette(imgData.data, Number($("paletteSize").value));
+    quantize(imgData, palette);
+    px.putImageData(imgData,0,0);
+
+    if($("outline").checked) addOutline(pixel);
+
+    const finalData = px.getImageData(0,0,tw,th);
+    const finalColors = buildPalette(finalData.data, 128);
+    state.lastPalette = finalColors;
+
+    const z = Number($("zoom").value);
+    const big = state.enlargedCanvas;
+    big.width = tw*z; big.height = th*z;
+    const bx = big.getContext("2d", {willReadFrequently:true});
+    bx.imageSmoothingEnabled = false;
+    bx.clearRect(0,0,big.width,big.height);
+    bx.drawImage(pixel,0,0,big.width,big.height);
+
+    previewCanvas.width = big.width;
+    previewCanvas.height = big.height;
+    pctx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
+    pctx.imageSmoothingEnabled = false;
+    pctx.drawImage(big,0,0);
+    drawGrid(pctx,tw,th,z);
+
+    $("srcStat").textContent = `${state.sourceCanvas.width} × ${state.sourceCanvas.height}`;
+    $("pixStat").textContent = `${tw} × ${th}`;
+    $("bigStat").textContent = `${big.width} × ${big.height}`;
+    $("colorStat").textContent = `${finalColors.length} 色`;
+
+    const sw = $("swatches");
+    sw.innerHTML = "";
+    finalColors.slice(0,64).forEach(c => {
+      const d = document.createElement("div");
+      d.className = "swatch";
+      d.title = hex(...c);
+      d.style.background = hex(...c);
+      sw.appendChild(d);
+    });
+  }
+
+  function downloadCanvas(canvas, suffix){
+    if(!state.img) return;
+    const a = document.createElement("a");
+    a.download = `${state.imgName}_${suffix}.png`;
+    a.href = canvas.toDataURL("image/png");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  $("downloadPixel").addEventListener("click", () => downloadCanvas(state.pixelCanvas, "pixel"));
+  $("downloadBig").addEventListener("click", () => downloadCanvas(state.enlargedCanvas, "pixel_big"));
+
+  $("downloadPalette").addEventListener("click", () => {
+    if(!state.lastPalette.length) return;
+    let txt = "GIMP Palette\nName: Pixelorama Export\nColumns: 8\n#\n";
+    for(const c of state.lastPalette){
+      txt += `${String(c[0]).padStart(3," ")} ${String(c[1]).padStart(3," ")} ${String(c[2]).padStart(3," ")} ${hex(...c)}\n`;
+    }
+    const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    a.download = `${state.imgName}_palette.gpl`;
+    a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),500);
+  });
+
+  $("copyInfo").addEventListener("click", async () => {
+    const txt = `Pixelorama 导入建议：
+1. 下载“像素 PNG”，这是透明背景低分辨率像素图。
+2. 在 Pixelorama 使用 File → Open 打开 PNG。
+3. 如果要做逐帧动画，保持每一帧同样像素尺寸：${$("targetW").value} × ${$("targetH").value}。
+4. 导出 sprite sheet 时建议固定帧宽高，不要自动裁剪每帧。`;
+    try{ await navigator.clipboard.writeText(txt); alert("已复制导入建议"); }
+    catch(e){ alert(txt); }
+  });
+
+  updateLabels();
+  drawOriginal();
+  process();
+})();
+</script>
+</body>
+</html>
